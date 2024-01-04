@@ -137,3 +137,19 @@ int ComprobarComando(char *strcomando, char *orden, char *argumento1, char *argu
    }
    return b;
 }
+
+//Mostramos por consola los ficheros(nombre, tamaño, inodos y bloques que ocupa)
+void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos){
+   for(int i=0; i<MAX_FICHEROS; i++){
+      if(directorio[i].dir_inodo!=NULL_INODO){
+         printf("%s\ttamano:%d\tinodo:%d\tbloques:", directorio[i].dir_nfich, inodos->blq_inodos[directorio[i].dir_inodo].size_fichero, 
+                     directorio[i].dir_inodo);
+         for(int j=0;MAX_NUMS_BLOQUE_INODO; j++){
+            if(inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[j]!=NULL_BLOQUE){
+               printf("%d ", inodos->blq_inodos[directorio[i].dir_inodo[j]]);
+            }
+         }
+      }
+   }
+   printf("\n");
+}
