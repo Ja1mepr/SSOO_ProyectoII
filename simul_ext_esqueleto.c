@@ -105,6 +105,17 @@ void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup){
    printf("Primer bloque de datos = %d", psup->s_first_data_block);
 }
 
+//Funcion que comprueba que exista el fichero. Si existe devuelve 1, en caso contrario devuelve 0
+int BuscaFich(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombre){
+   int b=0;
+   for(int i=0; i<MAX_FICHEROS; i++){
+      if(strcmp(directorio[i].dir_nfich, nombre)==0){
+         b=1;
+      }
+   }
+   return b;
+}
+
 void Printbytemaps(EXT_BYTE_MAPS *ext_bytemaps){
    
    printf("\nInodos: ");
@@ -152,4 +163,8 @@ void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos){
       }
    }
    printf("\n");
+}
+
+int Renombrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombreantiguo, char *nombrenuevo){
+
 }
