@@ -96,26 +96,6 @@ int main()
      }
 }
 
-void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup){
-   printf("Bloque %d Bytes", psup->s_block_size);
-   printf("Inodos particion = %d", psup->s_inodes_count);
-   printf("Inodos libres = ", psup->s_free_inodes_count);
-   printf("Bloques particion = %d", psup->s_blocks_count);
-   printf("Bloques libres = ", psup->s_free_blocks_count);
-   printf("Primer bloque de datos = %d", psup->s_first_data_block);
-}
-
-//Funcion que comprueba que exista el fichero. Si existe devuelve 1, en caso contrario devuelve 0
-int BuscaFich(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombre){
-   int b=0;
-   for(int i=0; i<MAX_FICHEROS; i++){
-      if(strcmp(directorio[i].dir_nfich, nombre)==0){
-         b=1;
-      }
-   }
-   return b;
-}
-
 void Printbytemaps(EXT_BYTE_MAPS *ext_bytemaps){
    
    printf("\nInodos: ");
@@ -131,21 +111,45 @@ void Printbytemaps(EXT_BYTE_MAPS *ext_bytemaps){
 //Comprobamos que el comando exista y en caso de existir que se le pasen los parametros necesarios para su funcionamiento
 int ComprobarComando(char *strcomando, char *orden, char *argumento1, char *argumento2){
 
-   int b=1;
+   int b=0;
 
    *orden=*strcomando;
    if(orden!="info" || orden!="bytemaps" || orden!="dir" || orden!="rename" || orden!="imprimir" || orden!="remove" || orden!="copy" || orden!="salir"){
-      b=0;
-      printf("El comando introducido no existe\n");
+      b=-1;
+      printf("ERROR!! El comando introducido no existe\n");
    }
    else if((orden=="rename" || orden=="copy") && (argumento1==NULL || argumento2==NULL)){
-      b=0;
-      printf("El comando no ha recibido los parametros correspondientes");
+      b=-1;
+      printf("ERROR!! El comando no ha recibido los parametros correspondientes\n");
    }
    else if((orden=="imprimir" || orden=="remove") && argumento1==NULL){
-      b=0;
-      printf("El comando no ha recibido los parametros correspondientes");
+      b=-1;
+      printf("ERROR!! El comando no ha recibido los parametros correspondientes\n");
    }
+   return b;
+}
+
+void LeeSuperBloque(EXT_SIMPLE_SUPERBLOCK *psup){
+   printf("Bloque %d Bytes", psup->s_block_size);
+   printf("Inodos particion = %d", psup->s_inodes_count);
+   printf("Inodos libres = ", psup->s_free_inodes_count);
+   printf("Bloques particion = %d", psup->s_blocks_count);
+   printf("Bloques libres = ", psup->s_free_blocks_count);
+   printf("Primer bloque de datos = %d", psup->s_first_data_block);
+}
+
+//Funcion que comprueba que exista el fichero. Si existe devuelve 1, en caso contrario devuelve 0
+int BuscaFich(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombre){
+
+   int b=-1;
+
+   for(int i=0; i<MAX_FICHEROS; i++){
+      if(strcmp(directorio[i].dir_nfich, nombre)==0){
+         b=0;
+      }
+   }
+   if(b==-1)
+      printf("ERROR!! El fichero %s no existe\n", nombre);
    return b;
 }
 
@@ -164,7 +168,27 @@ void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos){
    }
    printf("\n");
 }
-
+//Funcion para cambiar el nombre del fichero
 int Renombrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombreantiguo, char *nombrenuevo){
 
+   int b=-1;
+
+   if((strcmp(nombreantiguo, " ")==0) || (strcmp(nombrenuevo, " ")==0))
+      printf("ERROR!! Los parametros introducidos no son correctos");
+   else{
+      if((BuscaFich(directorio, inodos, nombreantiguo)==0) && (BuscaFich(directorio, inodos, nombrenuevo)==-1)){
+         for(int i=0; i<MAX_FICHEROS; i++){
+            if(strcmp(directorio[i].dir_nfich, nombreantiguo)==0)
+               strcpy(directorio[i].dir_nfich, nombrenuevo);
+         }
+         b=0;
+      }else if((BuscaFich(directorio, inodos, nombreantiguo)==-1) && (BuscaFich(directorio, inodos, nombrenuevo)==0)){
+         printf("ERROR!! El fichero %s no existe\n", nombreantiguo);
+         printf("%s ya es esta asociado a otro fichero\n", nombrenuevo);
+      }else if(BuscaFich(directorio, inodos, nombreantiguo)==-1)
+         printf("ERROR!! El fichero %s no existe\n", nombreantiguo);
+      else
+         printf("ERROR!! %s ya es esta asociado a otro fichero\n", nombrenuevo);
+   }
+   return b;
 }
