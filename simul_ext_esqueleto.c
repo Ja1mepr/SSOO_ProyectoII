@@ -111,21 +111,19 @@ void Printbytemaps(EXT_BYTE_MAPS *ext_bytemaps){
 //Comprobamos que el comando exista y en caso de existir que se le pasen los parametros necesarios para su funcionamiento
 int ComprobarComando(char *strcomando, char *orden, char *argumento1, char *argumento2){
 
-   int b=0;
+   int b=-1;
 
-   *orden=*strcomando;
-   if(orden!="info" || orden!="bytemaps" || orden!="dir" || orden!="rename" || orden!="imprimir" || orden!="remove" || orden!="copy" || orden!="salir"){
-      b=-1;
+   strcpy(orden, strcomando);
+   if((strcmp(argumento1, "")==0) || (strcmp(argumento2, "")==0))
+      printf("ERROR!! Los argumentos son invalidos\n");
+   if(orden!="info" || orden!="bytemaps" || orden!="dir" || orden!="rename" || orden!="imprimir" || orden!="remove" || orden!="copy" || orden!="salir")
       printf("ERROR!! El comando introducido no existe\n");
-   }
-   else if((orden=="rename" || orden=="copy") && (argumento1==NULL || argumento2==NULL)){
-      b=-1;
+   else if((orden=="rename" || orden=="copy") && (argumento1==NULL || argumento2==NULL))
       printf("ERROR!! El comando no ha recibido los parametros correspondientes\n");
-   }
-   else if((orden=="imprimir" || orden=="remove") && argumento1==NULL){
-      b=-1;
+   else if((orden=="imprimir" || orden=="remove") && argumento1==NULL)
       printf("ERROR!! El comando no ha recibido los parametros correspondientes\n");
-   }
+   else
+      b=0;
    return b;
 }
 
@@ -168,27 +166,61 @@ void Directorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos){
    }
    printf("\n");
 }
+
 //Funcion para cambiar el nombre del fichero
 int Renombrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, char *nombreantiguo, char *nombrenuevo){
 
    int b=-1;
 
-   if((strcmp(nombreantiguo, " ")==0) || (strcmp(nombrenuevo, " ")==0))
-      printf("ERROR!! Los parametros introducidos no son correctos");
+   if((strcmp(nombreantiguo, "")==0) || (strcmp(nombrenuevo, "")==0))//Comprobamos que nombreantiguo y nombrenuevo no sean cadenas vacias
+      printf("ERROR!! Los argumentos introducidos no son correctos");
    else{
-      if((BuscaFich(directorio, inodos, nombreantiguo)==0) && (BuscaFich(directorio, inodos, nombrenuevo)==-1)){
+      if((BuscaFich(directorio, inodos, nombreantiguo)==0) && (BuscaFich(directorio, inodos, nombrenuevo)==-1)){//Comprobamos que nombreantiguo sea un fichero existente y nombrenuevo no lo sea
          for(int i=0; i<MAX_FICHEROS; i++){
-            if(strcmp(directorio[i].dir_nfich, nombreantiguo)==0)
+            if(strcmp(directorio[i].dir_nfich, nombreantiguo)==0)//Si el fichero tiene se llama como nombreantiguo le cambiamos el nombre por nombre nuevo
                strcpy(directorio[i].dir_nfich, nombrenuevo);
          }
          b=0;
-      }else if((BuscaFich(directorio, inodos, nombreantiguo)==-1) && (BuscaFich(directorio, inodos, nombrenuevo)==0)){
+      }else if((BuscaFich(directorio, inodos, nombreantiguo)==-1) && (BuscaFich(directorio, inodos, nombrenuevo)==0)){//Comprobamos si alguno de los nombres da algun tipo de error y lo indicamos
          printf("ERROR!! El fichero %s no existe\n", nombreantiguo);
          printf("%s ya es esta asociado a otro fichero\n", nombrenuevo);
       }else if(BuscaFich(directorio, inodos, nombreantiguo)==-1)
          printf("ERROR!! El fichero %s no existe\n", nombreantiguo);
       else
          printf("ERROR!! %s ya es esta asociado a otro fichero\n", nombrenuevo);
+   }
+   return b;
+}
+
+//Funcion para imprimi el contenido del fichero
+int Imprimir(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_DATOS *memdatos, char *nombre){
+   
+   int b=0;
+   int j=0;
+   char *contFich=(char *)calloc(0, sizeof(char));
+
+   if(strcmp(nombre, "")==0){//Comprobamos que nombre no sea una cadena vacia
+      printf("ERROR!! El argumento introducido no es correcto\n");
+      b=-1;
+   }else{
+      if(BuscaFich(directorio, inodos, nombre!=0)){//Comprobamos que el nombre este asignado a un fichero existente
+         printf("ERROR!! El fichero %s no existe\n", nombre);
+         b=-1;
+      }else{
+         for(int i=0; i<MAX_FICHEROS; i++){
+            if(strcmp(directorio[i].dir_nfich, nombre)==0){
+               while(inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[j]!=NULL_INODO){//Recorremos los bloques hasta que haya alguno nulo
+                  contFich=(char*)realloc(contFich, (j+1)*SIZE_BLOQUE);//Aumentamos el espacio un bloque
+                  strcat(contFich, memdatos[inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque].dato);//Concatenamos el nuevo bloque
+                  j++;
+               }
+            }
+         }
+         strcat(contFich, "\0");
+         printf("%s", contFich);
+         printf("\n");
+         free(contFich);
+      }
    }
    return b;
 }
