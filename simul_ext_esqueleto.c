@@ -77,11 +77,14 @@ int main(){
          }else if(strcmp(orden,"rename")==0){
             Renombrar(&directorio, &ext_blq_inodos, argumento1, argumento2);
             continue;
-         }else if(strcmp(orden, "imprimir")){
+         }else if(strcmp(orden, "imprimir")==0){
             Imprimir(&directorio, &ext_blq_inodos, datosfich, argumento1);
             continue;
-         }else if(strcmp(orden, "borrar")){
+         }else if(strcmp(orden, "borrar")==0){
             Borrar(&directorio, &ext_blq_inodos, &ext_bytemaps, &ext_superblock, argumento1,  fent);
+            continue;
+         }else if(strcmp(orden, "copiar")==0){
+            inCopiar(&directorio, &ext_blq_inodos, &ext_bytemaps, &ext_superblock, datosfich, argumento1, argumento2, fent);
             continue;
          }
          /*// Escritura de metadatos en comandos rename, remove, copy     
@@ -250,22 +253,96 @@ int Borrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
       b=-1;
       printf("ERROR!! El argumento introducido no es correcto\n");
    }else{
-      for(int i=0; i<MAX_FICHEROS; i++){
-         if(strcmp(directorio[i].dir_nfich, nombre)==0){
-            for(int j=0; i<MAX_NUMS_BLOQUE_INODO; j++){
-               if(inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[j]!=NULL_INODO){
-                  ext_bytemaps->bmap_bloques[inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[j]]=0;//Damos valor 0 a los inodos liberados
-                  inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[j]=NULL_BLOQUE;//Para cada bloque damos el valor FFFH(NULL_BLOQUE)
-                  ext_superblock->s_free_blocks_count++;//Aumentamos la cuenta de bloques libres
+      if(BuscaFich(directorio, inodos, nombre)==-1){
+         b=-1;
+         printf("ERROR!! El fichero introducido no existe\n");
+      }else{
+         for(int i=0; i<MAX_FICHEROS; i++){
+            if(strcmp(directorio[i].dir_nfich, nombre)==0){
+               for(int j=0; i<MAX_NUMS_BLOQUE_INODO; j++){
+                  if(inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[j]!=NULL_INODO){
+                     ext_bytemaps->bmap_bloques[inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[j]]=0;//Damos valor 0 a los inodos liberados
+                     inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[j]=NULL_BLOQUE;//Para cada bloque damos el valor FFFH(NULL_BLOQUE)
+                     ext_superblock->s_free_blocks_count++;//Aumentamos la cuenta de bloques libres
+                  }
                }
-            }
-            ext_bytemaps->bmap_inodos[directorio[i].dir_inodo]=0;//Indicamos en el bytemap que queda liberado
-            ext_superblock->s_free_inodes_count++;//Aumentamos la cuenta de inodos libres libres
+               ext_bytemaps->bmap_inodos[directorio[i].dir_inodo]=0;//Indicamos en el bytemap que queda liberado
+               ext_superblock->s_free_inodes_count++;//Aumentamos la cuenta de inodos libres libres
 
-            strcpy(directorio[i].dir_nfich, "");//Ponemos un string vacio en el nombre
-            directorio[i].dir_inodo = NULL_INODO;//Damos el valor FFFH(NULL_INODO) en el numero del inodo
+               strcpy(directorio[i].dir_nfich, "");//Ponemos un string vacio en el nombre
+               directorio[i].dir_inodo = NULL_INODO;//Damos el valor FFFH(NULL_INODO) en el numero del inodo
+            }
          }
       }
    }
    return b;
 }
+
+//Funcion para copiar el contenido de un fichero en uno nuevo
+int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *ext_bytemaps, EXT_SIMPLE_SUPERBLOCK *ext_superblock, EXT_DATOS *memdatos, char *nombreorigen, char *nombredestino, FILE *fich) {
+    int b = -1;
+
+    if (fich == NULL || strcmp(nombreorigen, "") == 0 || strcmp(nombredestino, "") == 0) {
+        printf("ERROR!! Los argumentos introducidos no son correctos\n");
+    } else {
+        if (BuscaFich(directorio, inodos, nombreorigen) == -1 || BuscaFich(directorio, inodos, nombredestino) == -1) {
+            printf("ERROR!! El fichero introducido no existe\n");
+        } else {
+            int bloquesnecesarios = 0;
+
+            for (int i = 1; i < MAX_FICHEROS; i++) {// Bucle para encontrar el fichero
+                if (strcmp(nombreorigen, directorio[i].dir_nfich) == 0) {
+                    
+                    for (int j = 1; j < MAX_FICHEROS; j++) {// Bucle para encontrar un inodo libre
+                        if (ext_bytemaps->bmap_inodos[j] == 0) {
+                            ext_bytemaps->bmap_inodos[j] = 1;
+                            ext_superblock->s_free_inodes_count--;
+
+                            for (int k = 0; k < MAX_FICHEROS; k++) {// Bucle para encontrar una entrada del directorio libre
+                                if (directorio[k].dir_inodo == NULL_INODO) {
+                                    directorio[k].dir_inodo = j;
+                                    inodos->blq_inodos[directorio[k].dir_inodo].size_fichero = inodos->blq_inodos[directorio[i].dir_inodo].size_fichero;
+
+                                    for (int t = 0; t < MAX_NUMS_BLOQUE_INODO; t++) {// Contamos bloques necesarios
+                                        if (inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[t] != NULL_BLOQUE)
+                                            bloquesnecesarios++;
+                                    }
+
+                                    strcpy(directorio[k].dir_nfich, nombredestino);// Actualizamos entrada de directorio
+
+                                    if (ext_superblock->s_free_blocks_count < bloquesnecesarios) {// Comprobamos el espacio libre
+                                        printf("ERROR: No hay suficientes bloques libres para copiar el fichero\n");
+                                        ext_bytemaps->bmap_inodos[j] = 0;
+                                        ext_superblock->s_free_inodes_count++;
+                                        directorio[k].dir_inodo = NULL_INODO;
+                                        break;
+                                    } else {
+                                        b = 0;
+
+                                        for (int p = 0; p < MAX_NUMS_BLOQUE_INODO; p++) {// Copiamos los bloques de datos
+                                            if (inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[p] != NULL_BLOQUE) {
+                                                for (int l = 0; l < MAX_BLOQUES_PARTICION; l++) {
+                                                    if (ext_bytemaps->bmap_bloques[l] == 0) {
+                                                        ext_bytemaps->bmap_bloques[l] = 1;
+                                                        ext_superblock->s_free_blocks_count--;
+                                                        inodos->blq_inodos[directorio[k].dir_inodo].i_nbloque[p] = l;
+                                                        memcpy(memdatos[inodos->blq_inodos[directorio[k].dir_inodo].i_nbloque[p]].dato, memdatos[inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[p]].dato, SIZE_BLOQUE);
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return b;
+}
+
