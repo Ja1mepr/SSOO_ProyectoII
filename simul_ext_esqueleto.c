@@ -257,7 +257,7 @@ int Borrar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
          b=-1;
          printf("ERROR!! El fichero introducido no existe\n");
       }else{
-         for(int i=0; i<MAX_FICHEROS; i++){
+         for(int i=0; i<MAX_FICHEROS; i++){ 
             if(strcmp(directorio[i].dir_nfich, nombre)==0){
                for(int j=0; i<MAX_NUMS_BLOQUE_INODO; j++){
                   if(inodos->blq_inodos[directorio[i].dir_inodo].i_nbloque[j]!=NULL_INODO){
@@ -346,3 +346,25 @@ int Copiar(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, EXT_BYTE_MAPS *e
     return b;
 }
 
+//Funciones para grabar el nuevo contenido en el fichero binario
+void Grabarinodosydirectorio(EXT_ENTRADA_DIR *directorio, EXT_BLQ_INODOS *inodos, FILE *fich){
+fseek(fich, SIZE_BLOQUE*2, SEEK_SET);	
+	fwrite((EXT_DATOS *)inodos, SIZE_BLOQUE, 1, fich);		
+	fseek(fich, SIZE_BLOQUE*3, SEEK_SET);
+	fwrite((EXT_DATOS *)directorio, SIZE_BLOQUE, 1, fich);
+}
+
+void GrabarByteMaps(EXT_BYTE_MAPS *ext_bytemaps, FILE *fich){
+  fseek(fich, SIZE_BLOQUE*1, SEEK_SET);		
+	fwrite((EXT_DATOS *)ext_bytemaps, SIZE_BLOQUE, 1, fich);
+}
+
+void GrabarSuperBloque(EXT_SIMPLE_SUPERBLOCK *ext_superblock, FILE *fich){
+	fseek(fich, SIZE_BLOQUE*0, SEEK_SET );
+	fwrite((EXT_DATOS *)ext_superblock, SIZE_BLOQUE, 1,fich);
+}
+
+void GrabarDatos(EXT_DATOS *memdatos, FILE *fich){
+fseek(fich, SIZE_BLOQUE*4, SEEK_SET);		
+	fwrite((EXT_DATOS *)memdatos, MAX_BLOQUES_DATOS*SIZE_BLOQUE, 1, fich);	
+}
